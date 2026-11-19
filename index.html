@@ -416,8 +416,9 @@ a{color:inherit;text-decoration:none}
    <div class="set"><div><b>🎧 अपना गाना लगाएँ (MP3)</b><small id="sSong">अभी: Mera AI demo beat</small></div><label class="sb2">चुनें<input type="file" id="sFile" accept="audio/*" hidden></label></div>
    <div class="set hide" id="sClrRow"><div><b>✖ अपना गाना हटाएँ</b><small>वापस demo beat पर</small></div><button class="sb2" id="sClr">हटाएँ</button></div>
    <div class="set"><div><b>💬 WhatsApp बटन दिखाएँ</b><small>गाना बनने के बाद हरा “WhatsApp पर भेजें”</small></div><button class="tg" data-k="wa"></button></div>
-   <div class="set"><div><b>🎤 असली आवाज़ रिकॉर्ड करें</b><small>फ़ोन का माइक चलेगा, बाद में अपनी recording सुन सकते हैं</small></div><button class="tg" data-k="realMic"></button></div>
-   <div class="set"><div><b>📝 बोले हुए शब्द लिखें</b><small>जो बोलेंगे वही “आपने कहा” में आएगा (आवाज़ धीमी आए तो इसे बंद करें)</small></div><button class="tg" data-k="stt"></button></div>
+   <div class="set"><div><b>📝 बोले हुए शब्द लिखें</b><small>आप जो बोलेंगे वही “आपने कहा” में subtitle जैसा लिखा आएगा (इंटरनेट चाहिए)</small></div><button class="tg" data-k="stt"></button></div>
+   <div class="set"><div><b>🎧 आवाज़ की recording भी सेव करें</b><small>बाद में ▶ से सुन सकें। जिस फ़ोन पर ये लिखाई के साथ नहीं चलती, वहाँ अपने-आप बंद हो जाती है</small></div><button class="tg" data-k="realMic"></button></div>
+   <div class="set"><div><b>ℹ️ इस फ़ोन पर</b><small id="sStat"></small></div></div>
    <div class="set"><div><b>✍️ नाम अपने-आप लिखे</b><small>बॉक्स दबाते ही नाम खुद टाइप होगा (keyboard नहीं)</small></div><button class="tg" data-k="auto"></button></div>
    <div class="set"><div><b>👆 Tap का गोला दिखाएँ</b><small>screen recording में उंगली कहाँ लगी दिखेगा</small></div><button class="tg" data-k="taps"></button></div>
    <div class="set"><div><b>⏱ गाना बनने का समय</b><small>loading कितनी देर चले</small></div><div class="seg" id="sGen"><button data-v="3">3s</button><button data-v="5">5s</button><button data-v="8">8s</button></div></div>
@@ -770,43 +771,83 @@ function drawWave(){
   }
   R.raf=requestAnimationFrame(drawWave);
 }
+let STTONLY=false;try{STTONLY=localStorage.getItem('ma_sttonly')==='1'}catch(e){}
+function setSttOnly(v){STTONLY=!!v;try{v?localStorage.setItem('ma_sttonly','1'):localStorage.removeItem('ma_sttonly')}catch(e){}}
+function sttErrToast(err){
+  if(err==='network')toast('📶 बोलकर लिखने के लिए इंटरनेट चाहिए',3000);
+  else if(err==='not-allowed'||err==='service-not-allowed')toast('🎤 माइक की इजाज़त दें (browser settings में)',3200);
+  else if(err==='language-not-supported')toast('इस फ़ोन पर हिंदी में लिखना नहीं चलता',3000);
+}
 function startSTT(){
   let r;try{r=new SR()}catch(e){R.sttDead=true;fakeType();return}
   R.rec=r;r.lang='hi-IN';r.interimResults=true;r.continuous=!isAndroid;r.maxAlternatives=1;
+  const act=()=>{R.lastAct=performance.now()};
+  r.onspeechstart=r.onsoundstart=()=>{R.sound=true;act()};
+  r.onspeechend=r.onsoundend=()=>{R.sound=false};
   r.onresult=e=>{let sf='',si='';for(let i=0;i<e.results.length;i++){const t=e.results[i][0].transcript;if(e.results[i].isFinal)sf+=' '+t;else si+=' '+t}
-    R.sf=sf;R.si=si;if(R.state==='on'&&!R.fake)liveText(joinT(R.fin,sf,si))};
-  r.onerror=e=>{if(['not-allowed','service-not-allowed','audio-capture','network','language-not-supported'].includes(e.error)){R.sttDead=true;if(R.state==='on'&&!joinT(R.fin,R.sf,R.si))fakeType()}};
-  r.onend=()=>{R.fin=joinT(R.fin,R.sf);R.sf='';R.si='';
-    if(R.state==='on'&&!R.sttDead&&R.rec===r){setTimeout(()=>{if(R.state==='on'&&R.rec===r){try{r.start()}catch(e){}}},120)}
+    R.sf=sf;R.si=si;R.got=true;act();if(R.state==='on'&&!R.fake)liveText(joinT(R.fin,sf,si))};
+  r.onerror=e=>{
+    const err=e.error;if(err==='no-speech'||err==='aborted')return;
+    if(R.real&&!R.got&&['audio-capture','not-allowed','service-not-allowed'].includes(err)){switchToSttOnly();return}
+    if(['not-allowed','service-not-allowed','audio-capture','network','language-not-supported'].includes(err)){
+      R.sttDead=true;sttErrToast(err);if(R.state==='on'&&!joinT(R.fin,R.sf,R.si))fakeType()}};
+  r.onend=()=>{R.fin=joinT(R.fin,R.sf||R.si);R.sf='';R.si='';
+    if(R.state==='on'&&!R.sttDead&&R.rec===r){setTimeout(()=>{if(R.state==='on'&&R.rec===r){try{r.start()}catch(e){}}},40)}
     else if(R.endWait){const f=R.endWait;R.endWait=null;f()}};
   try{r.start()}catch(e){R.sttDead=true;fakeType()}
 }
+function releaseMic(){
+  if(R.mr&&R.mr.state!=='inactive'){try{R.mr.ondataavailable=null;R.mr.stop()}catch(e){}}
+  R.mr=null;R.chunks=[];R.an=null;
+  if(R.src){try{R.src.disconnect()}catch(e){}R.src=null}
+  if(R.mute){try{R.mute.disconnect()}catch(e){}R.mute=null}
+  if(R.stream){R.stream.getTracks().forEach(t=>t.stop());R.stream=null}
+}
+function actWave(){
+  if(R.state!=='on'||R.an)return;
+  const on=R.sound||performance.now()-(R.lastAct||0)<700;
+  if(on!==R.wvOn){R.wvOn=on;wv.classList.toggle('go',on)}
+  R.raf=requestAnimationFrame(actWave);
+}
+function switchToSttOnly(){
+  if(R.switched||R.state!=='on')return;R.switched=true;setSttOnly(true);
+  cancelAnimationFrame(R.raf);releaseMic();R.real=false;R.levels=[];
+  wv.classList.remove('live');wbars.forEach(b=>b.style.transform='');R.wvOn=null;actWave();
+  if(R.rec){const r=R.rec;R.rec=null;r.onend=r.onresult=r.onerror=null;try{r.abort()}catch(e){}}
+  R.sttDead=false;R.fin=joinT(R.fin,R.sf||R.si);R.sf=R.si='';
+  setTimeout(()=>{if(R.state==='on')startSTT()},250);
+}
+function checkConflict(){if(R.state==='on'&&R.real&&!R.got&&!R.fake&&R.peak>0.02)switchToSttOnly()}
 async function startRec(){
   if(R.state!=='idle')return;R.state='starting';M.init();vib(15);
-  if(SET.realMic&&navigator.mediaDevices&&navigator.mediaDevices.getUserMedia&&window.MediaRecorder){
+  const wantSTT=!!(SET.stt&&SR);
+  if(SET.stt&&!SR)toast('📝 इस browser में बोलकर लिखना नहीं चलता — Chrome में खोलें',3600);
+  const wantRec=SET.realMic&&!(wantSTT&&STTONLY)&&navigator.mediaDevices&&navigator.mediaDevices.getUserMedia&&window.MediaRecorder;
+  if(wantRec){
     try{R.stream=await navigator.mediaDevices.getUserMedia({audio:{echoCancellation:true,noiseSuppression:true,autoGainControl:true}});R.real=true}
-    catch(e){R.real=false;toast('🎤 माइक की इजाज़त नहीं मिली — demo mode चलेगा',2600)}
+    catch(e){R.real=false;if(!wantSTT)toast('🎤 माइक की इजाज़त नहीं मिली — demo mode चलेगा',2600)}
   }
   if(R.state!=='starting'){if(R.stream){R.stream.getTracks().forEach(t=>t.stop());R.stream=null}return}
-  R.state='on';M.blip(990);
+  R.state='on';M.blip(990);R.got=false;R.sound=false;R.lastAct=0;R.switched=false;R.wvOn=null;
   $('rT').textContent='रिकॉर्डिंग हो रही है...';$('rTm').style.visibility='visible';$('rS').classList.add('hide');
   const m=$('micBtn');m.classList.remove('idle');m.classList.add('rec');
   $('rH').textContent='रोकने के लिए दबाएँ';
   $('said').classList.remove('ex');$('saidL').textContent='आपने कहा:';
   R.start=Date.now();R.sec=0;
-  R.t=setInterval(()=>{R.sec=(Date.now()-R.start)/1000;$('rTt').textContent='00:'+String(Math.floor(R.sec)).padStart(2,'0');if(R.sec>=25)finishRec()},200);
+  R.t=setInterval(()=>{R.sec=(Date.now()-R.start)/1000;$('rTt').textContent='00:'+String(Math.floor(R.sec)).padStart(2,'0');if(R.sec>=30)finishRec()},200);
   if(R.real){
     let mime='';for(const t of ['audio/webm;codecs=opus','audio/webm','audio/mp4','audio/ogg;codecs=opus'])if(MediaRecorder.isTypeSupported&&MediaRecorder.isTypeSupported(t)){mime=t;break}
     try{R.mr=mime?new MediaRecorder(R.stream,{mimeType:mime}):new MediaRecorder(R.stream)}catch(e){R.mr=new MediaRecorder(R.stream)}
     R.chunks=[];R.mr.ondataavailable=e=>{if(e.data&&e.data.size)R.chunks.push(e.data)};R.mr.start(250);
     try{R.src=M.ctx.createMediaStreamSource(R.stream);R.an=M.ctx.createAnalyser();R.an.fftSize=256;R.an.smoothingTimeConstant=.55;R.src.connect(R.an);R.mute=M.ctx.createGain();R.mute.gain.value=0;R.an.connect(R.mute);R.mute.connect(M.ctx.destination);R.fd=R.td=null;wv.classList.add('live');drawWave()}
     catch(e){wv.classList.add('go')}
-  }else wv.classList.add('go');
-  if(SET.stt&&SR){liveText('');startSTT()}else{$('saidP').innerHTML='<span class="cur"></span>';R.typ=setTimeout(fakeType,500)}
+  }else if(wantSTT){actWave()}else wv.classList.add('go');
+  if(wantSTT){liveText('');startSTT();if(R.real)R.fb=setTimeout(checkConflict,3000)}
+  else{$('saidP').innerHTML='<span class="cur"></span>';R.typ=setTimeout(fakeType,500)}
 }
 async function finishRec(){
   if(R.state!=='on')return;R.state='stopping';
-  clearInterval(R.t);clearTimeout(R.typ);cancelAnimationFrame(R.raf);M.blip(740);vib(12);
+  clearInterval(R.t);clearTimeout(R.typ);clearTimeout(R.fb);cancelAnimationFrame(R.raf);M.blip(740);vib(12);
   $('rH').textContent='सेव हो रहा है…';
   const waits=[];
   if(R.mr&&R.mr.state!=='inactive')waits.push(new Promise(res=>{R.mr.onstop=res;try{R.mr.stop()}catch(e){res()}}));
@@ -819,7 +860,7 @@ async function finishRec(){
   if(R.mute){try{R.mute.disconnect()}catch(e){}R.mute=null}
   if(R.stream){R.stream.getTracks().forEach(t=>t.stop());R.stream=null}
   if(R.chunks&&R.chunks.length){R.blob=new Blob(R.chunks,{type:(R.mr&&R.mr.mimeType)||'audio/webm'});R.url=URL.createObjectURL(R.blob)}
-  if(R.real&&R.url&&R.peak<0.012)toast('⚠️ आवाज़ बहुत धीमी रिकॉर्ड हुई — ⚙️ में "बोले हुए शब्द लिखें" बंद करके देखें',4200);
+  if(R.real&&R.url&&R.peak<0.012){if(text){setSttOnly(true);URL.revokeObjectURL(R.url);R.url=null;R.blob=null}else toast('⚠️ आवाज़ बहुत धीमी रिकॉर्ड हुई — माइक के पास बोलिए',3500)}
   R.state='done';R.dur=Math.max(1,R.sec);
   $('saidD').innerHTML=text?hlName(text):tokHTML(trTokens());
   $('pbT').textContent='0:00 / '+sec2(R.url?R.dur:Math.max(5,Math.min(14,R.dur)));
@@ -965,11 +1006,12 @@ document.querySelectorAll('.ov').forEach(o=>o.addEventListener('click',e=>{if(e.
 /* ---------- settings ---------- */
 function paintSet(){
   document.querySelectorAll('.tg').forEach(t=>t.classList.toggle('on',!!SET[t.dataset.k]));
+  $('sStat').textContent=(SR?'✅ बोलकर लिखना चलेगा':'❌ बोलकर लिखना यहाँ नहीं चलेगा — Chrome में खोलें')+(SR&&STTONLY&&SET.realMic?' • recording बंद (लिखाई ज़रूरी)':'');
   $('sGen').querySelectorAll('button').forEach(b=>b.classList.toggle('on',+b.dataset.v===SET.gen));
   $('sSong').textContent=M.buf?'अभी: '+M.bufName:'अभी: Mera AI demo beat';$('sClrRow').classList.toggle('hide',!M.buf);
   $('play').classList.toggle('wa',!!SET.wa);nI.readOnly=!!SET.auto;if(S.c)paintG();
 }
-document.querySelectorAll('.tg').forEach(t=>t.onclick=()=>{vib();SET[t.dataset.k]=!SET[t.dataset.k];saveSet();paintSet();
+document.querySelectorAll('.tg').forEach(t=>t.onclick=()=>{vib();SET[t.dataset.k]=!SET[t.dataset.k];if(t.dataset.k==='realMic'&&SET.realMic)setSttOnly(false);saveSet();paintSet();
   if(t.dataset.k==='music'){if(!SET.music)M.stop();else if(P.playing)M.start(P.pos)}});
 $('sGen').onclick=e=>{const b=e.target.closest('button');if(!b)return;vib();SET.gen=+b.dataset.v;saveSet();paintSet()};
 $('gear').onclick=()=>{vib();M.init();paintSet();openSheet('setOv')};
