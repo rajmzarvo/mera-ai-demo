@@ -82,9 +82,7 @@ a{color:inherit;text-decoration:none}
 .inp{width:100%;height:calc(var(--u)*15);border-radius:calc(var(--u)*4);border:calc(var(--u)*.6) solid #7c3aed;box-shadow:0 0 0 calc(var(--u)*1.3) #ece3ff;background:#fff;display:flex;align-items:center;padding:0 calc(var(--u)*2.4) 0 calc(var(--u)*4.6);gap:calc(var(--u)*2)}
 .inp input{flex:1;min-width:0;border:0;outline:0;background:none;font:inherit;font-weight:700;font-size:calc(var(--u)*5.4);color:#1d1a4f;caret-color:#7c3aed;padding-top:calc(var(--u)*.8)}
 .inp input::placeholder{color:#a8a3c2;font-weight:500}
-.gsel{display:flex;align-items:center;justify-content:center;gap:calc(var(--u)*2.2);margin-top:calc(var(--u)*4.2);font-size:calc(var(--u)*3.6);color:#5d5a7c;font-weight:600}
-.gsel button{display:flex;align-items:center;gap:calc(var(--u)*1);padding:calc(var(--u)*1.2) calc(var(--u)*3.8);border-radius:99px;background:#fff;border:calc(var(--u)*.5) solid #e6e0f3;font-weight:700;font-size:calc(var(--u)*3.9);color:#5d5a7c;transition:.2s}
-.gsel button.on{border-color:#7c3aed;background:#f3ecff;color:#5b21b6;box-shadow:0 0 0 calc(var(--u)*.8) #ece3ff}
+.wv.live i{transition:transform 70ms linear}
 .imic{flex:none;width:calc(var(--u)*9.5);height:calc(var(--u)*9.5);border-radius:50%;background:linear-gradient(135deg,#ff3d8b,#9b3dff);display:grid;place-items:center}
 .imic svg{width:52%;height:52%;fill:#fff}
 .imic.live{animation:pul 1s infinite}
@@ -321,7 +319,6 @@ a{color:inherit;text-decoration:none}
    <p class="sub" id="nS"></p>
    <div class="ava"><svg><use href="#person"/></svg><i id="nE"></i></div>
    <label class="inp"><input id="nI" type="text" autocomplete="off" autocorrect="off" spellcheck="false" enterkeyhint="go"><button class="imic" id="nM" type="button" aria-label="mic"><svg><use href="#micI"/></svg></button></label>
-   <div class="gsel hide" id="gsel"><span>किसके लिए?</span><button type="button" data-g="m" id="gM"></button><button type="button" data-g="f" id="gF"></button></div>
    <button class="gbtn" id="nameBtn"><span id="nB"></span><svg viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-6 6"/></svg></button>
   </div>
   <div class="wave"></div>
@@ -419,7 +416,8 @@ a{color:inherit;text-decoration:none}
    <div class="set"><div><b>🎧 अपना गाना लगाएँ (MP3)</b><small id="sSong">अभी: Mera AI demo beat</small></div><label class="sb2">चुनें<input type="file" id="sFile" accept="audio/*" hidden></label></div>
    <div class="set hide" id="sClrRow"><div><b>✖ अपना गाना हटाएँ</b><small>वापस demo beat पर</small></div><button class="sb2" id="sClr">हटाएँ</button></div>
    <div class="set"><div><b>💬 WhatsApp बटन दिखाएँ</b><small>गाना बनने के बाद हरा “WhatsApp पर भेजें”</small></div><button class="tg" data-k="wa"></button></div>
-   <div class="set"><div><b>👦👧 लड़का / लड़की बटन</b><small>नाम से अपने-आप चुनता है — गलत हो तो एक tap में बदलें</small></div><button class="tg" data-k="gbtn"></button></div>
+   <div class="set"><div><b>🎤 असली आवाज़ रिकॉर्ड करें</b><small>फ़ोन का माइक चलेगा, बाद में अपनी recording सुन सकते हैं</small></div><button class="tg" data-k="realMic"></button></div>
+   <div class="set"><div><b>📝 बोले हुए शब्द लिखें</b><small>जो बोलेंगे वही “आपने कहा” में आएगा (आवाज़ धीमी आए तो इसे बंद करें)</small></div><button class="tg" data-k="stt"></button></div>
    <div class="set"><div><b>✍️ नाम अपने-आप लिखे</b><small>बॉक्स दबाते ही नाम खुद टाइप होगा (keyboard नहीं)</small></div><button class="tg" data-k="auto"></button></div>
    <div class="set"><div><b>👆 Tap का गोला दिखाएँ</b><small>screen recording में उंगली कहाँ लगी दिखेगा</small></div><button class="tg" data-k="taps"></button></div>
    <div class="set"><div><b>⏱ गाना बनने का समय</b><small>loading कितनी देर चले</small></div><div class="seg" id="sGen"><button data-v="3">3s</button><button data-v="5">5s</button><button data-v="8">8s</button></div></div>
@@ -519,7 +517,7 @@ const C=[
 ];
 
 /* ---------- settings ---------- */
-const DEF={music:true,wa:true,auto:false,taps:false,gen:5,gbtn:true};
+const DEF={music:true,wa:true,auto:false,taps:false,gen:5,realMic:true,stt:true};
 let SET=Object.assign({},DEF);
 try{Object.assign(SET,JSON.parse(localStorage.getItem('meraai_demo_set')||'{}'))}catch(e){}
 const saveSet=()=>{try{localStorage.setItem('meraai_demo_set',JSON.stringify(SET))}catch(e){}};
@@ -538,7 +536,8 @@ function go(id,back){
   const prev=cur;cur=id;
   app.classList.toggle('dark',id==='play');
   if(prev==='play'&&id!=='play')stopPlayer();
-  if(prev==='rec')stopRec(true);
+  if(prev==='rec')stopRec();
+  if(prev==='name'&&S.nRec){try{S.nRec.abort()}catch(e){}S.nRec=null}
   if(prev==='gen')clearInterval(genT);
   if(!back&&id!=='splash'){try{history.pushState({s:id},'')}catch(e){}}
 }
@@ -642,7 +641,17 @@ function autoType(txt,done){
   typing=setInterval(()=>{nI.value+=ch[k++]||'';gAuto();if(k>=ch.length){clearInterval(typing);typing=null;$('nM').classList.remove('live');done&&done()}},Math.max(70,Math.min(140,900/ch.length)))
 }
 nI.addEventListener('pointerdown',e=>{if(SET.auto){e.preventDefault();if(!nI.value&&!typing)autoType(S.c.dn)}});
-$('nM').onclick=e=>{e.preventDefault();e.stopPropagation();vib();M.blip(660);if(!typing){nI.blur();if(!nI.value)autoType(S.c.dn);else toast('🎤 नाम मिल गया')}};
+$('nM').onclick=e=>{e.preventDefault();e.stopPropagation();vib();M.blip(660);if(typing||S.nRec)return;nI.blur();
+  const SRn=window.SpeechRecognition||window.webkitSpeechRecognition;
+  if(!(SET.stt&&SRn)){if(!nI.value)autoType(S.c.dn);else toast('🎤 नाम मिल गया');return}
+  let r;try{r=new SRn()}catch(x){autoType(S.c.dn);return}
+  S.nRec=r;r.lang='hi-IN';r.interimResults=true;r.continuous=false;let got=false,bad=false;
+  $('nM').classList.add('live');nI.placeholder='बोलिए… 🎤';
+  r.onresult=ev=>{let t='';for(let i=0;i<ev.results.length;i++)t+=ev.results[i][0].transcript;t=t.replace(/[।.?!,]+$/,'').trim();if(t){got=true;nI.value=t;gAuto()}};
+  r.onerror=ev=>{if(['not-allowed','service-not-allowed','audio-capture','network','language-not-supported'].includes(ev.error))bad=true};
+  r.onend=()=>{S.nRec=null;$('nM').classList.remove('live');if(S.c)nI.placeholder=S.c.ph;if(!got){if(bad&&!nI.value)autoType(S.c.dn);else if(!got)toast('🎤 आवाज़ नहीं आई — फिर से दबाकर बोलिए')}};
+  try{r.start()}catch(x){S.nRec=null;$('nM').classList.remove('live');autoType(S.c.dn)}
+};
 nI.addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();submitName()}});
 $('nameBtn').onclick=submitName;
 function submitName(){
@@ -669,14 +678,9 @@ function guessG(full){
   if(/(ay|ey|oy)$/.test(n))return 'm';
   return /(a|i|ee|y)$/.test(n)?'f':'m';
 }
-function paintG(){
-  const c=S.c,show=!!(c&&c.gl&&SET.gbtn);$('gsel').classList.toggle('hide',!show);if(!c||!c.gl)return;
-  $('gM').textContent=c.gl[0];$('gF').textContent=c.gl[1];
-  $('gM').classList.toggle('on',S.g!=='f');$('gF').classList.toggle('on',S.g==='f');
-}
+function paintG(){}
 function gAuto(){if(S.c&&!S.gLock){const g=guessG(nI.value.trim()||S.c.dn);if(g!==S.g){S.g=g;paintG()}}}
 nI.addEventListener('input',gAuto);
-$('gsel').addEventListener('click',e=>{const b=e.target.closest('button');if(!b)return;vib();S.g=b.dataset.g;S.gLock=true;paintG()});
 /* ---------- names / text helpers ---------- */
 const pk=x=>(x&&typeof x==='object')?x[S.g==='f'?'f':'m']:x;
 function names(){
@@ -699,59 +703,155 @@ function trTokens(){
 }
 const tokHTML=a=>a.map(x=>x.h?'<em>'+esc(x.t)+'</em>':esc(x.t)).join('');
 
-/* ---------- record ---------- */
-const wv=$('wv');(function(){let h='';for(let i=0;i<44;i++){const a=(.12+Math.random()*.25).toFixed(2),b=(.45+Math.random()*.55).toFixed(2),d=(.28+Math.random()*.45).toFixed(2),dl=(-Math.random()).toFixed(2);h+=`<i style="--a:${a};--b:${b};--d:${d}s;--dl:${dl}s"></i>`}wv.innerHTML=h})();
-(function(){let h='';for(let i=0;i<34;i++)h+=`<i style="--h:${(25+Math.random()*75)|0}%"></i>`;$('mini').innerHTML=h})();
-let recState='idle',recT=null,recTyp=null,recSec=0,recStart=0;
+/* ---------- record (REAL mic + speech-to-text, demo fallback) ---------- */
+const wv=$('wv'),WB=44;(function(){let h='';for(let i=0;i<WB;i++){const a=(.12+Math.random()*.25).toFixed(2),b=(.45+Math.random()*.55).toFixed(2),d=(.28+Math.random()*.45).toFixed(2),dl=(-Math.random()).toFixed(2);h+=`<i style="--a:${a};--b:${b};--d:${d}s;--dl:${dl}s"></i>`}wv.innerHTML=h})();
+const wbars=[...wv.children];
+const mini=$('mini'),MB=34;(function(){let h='';for(let i=0;i<MB;i++)h+=`<i style="--h:${(25+Math.random()*75)|0}%"></i>`;mini.innerHTML=h})();
+const SR=window.SpeechRecognition||window.webkitSpeechRecognition;
+const isAndroid=/Android/i.test(navigator.userAgent);
+const R={state:'idle'};
+const PLAY='M8 5v14l11-7z',PAUSE='M7 5h3.6v14H7zM13.4 5H17v14h-3.6z';
+const sec2=s=>'0:'+String(Math.max(0,Math.floor(s))).padStart(2,'0');
+const joinT=(...a)=>a.filter(x=>x&&x.trim()).map(x=>x.trim()).join(' ');
+function hlName(text){
+  let h=esc(text);const n=(S.n||'').trim();if(!n)return h;
+  const parts=[n,...n.split(/\s+/).filter(w=>w.length>1)].map(x=>esc(x).replace(/[.*+?^${}()|[\]\\]/g,'\\$&'));
+  try{h=h.replace(new RegExp('('+parts.join('|')+')','gi'),'<em>$1</em>')}catch(e){}
+  return h.replace(/<\/em>(\s*)<em>/g,'$1')
+}
+function liveText(t){
+  const s=t.length>150?'…'+t.slice(-150):t;
+  $('saidP').innerHTML=(s?hlName(s):'<span style="color:#a8a3c2;font-weight:600">बोलिए… 🎙️</span>')+'<span class="cur"></span>'
+}
+function stopRec(){
+  clearInterval(R.t);clearTimeout(R.typ);clearTimeout(R.fb);cancelAnimationFrame(R.raf);cancelAnimationFrame(R.praf);
+  if(R.rec){const r=R.rec;R.rec=null;r.onend=r.onresult=r.onerror=null;try{r.abort()}catch(e){}}
+  if(R.mr&&R.mr.state!=='inactive'){try{R.mr.stop()}catch(e){}}
+  if(R.src){try{R.src.disconnect()}catch(e){}R.src=null}
+  if(R.mute){try{R.mute.disconnect()}catch(e){}R.mute=null}
+  if(R.stream){R.stream.getTracks().forEach(t=>t.stop());R.stream=null}
+  if(R.audio){try{R.audio.pause()}catch(e){}}
+  clearInterval(R.pbT);R.pbT=null;$('pbI').setAttribute('d',PLAY);
+  wv.classList.remove('go','live');
+  if(R.state==='starting'||R.state==='on'||R.state==='stopping')R.state='idle';
+}
 function resetRec(){
-  stopRec(true);recState='idle';
+  stopRec();if(R.url){URL.revokeObjectURL(R.url)}
+  Object.assign(R,{state:'idle',url:null,blob:null,audio:null,mr:null,an:null,chunks:[],levels:[],fin:'',sf:'',si:'',sec:0,peak:0,real:false,fake:false,sttDead:false});
   $('recLive').classList.remove('hide');$('recDone').classList.add('hide');
   $('rT').textContent='बोलिए, कैसा गाना चाहिए?';$('rTm').style.visibility='hidden';$('rS').classList.remove('hide');
-  $('rTt').textContent='00:00';wv.classList.remove('go');
+  $('rTt').textContent='00:00';wbars.forEach(b=>b.style.transform='');
   const m=$('micBtn');m.classList.remove('rec');m.classList.add('idle');
   $('rH').textContent='बोलने के लिए दबाएँ';
   $('said').classList.add('ex');$('saidL').textContent='ऐसे बोलिए:';$('saidP').innerHTML=tokHTML(trTokens());
 }
-function startRec(){
-  recState='on';M.init();M.blip(990);vib(15);
-  $('rT').textContent='रिकॉर्डिंग हो रही है...';$('rTm').style.visibility='visible';$('rS').classList.add('hide');
-  wv.classList.add('go');const m=$('micBtn');m.classList.remove('idle');m.classList.add('rec');
-  $('rH').textContent='रोकने के लिए दबाएँ';
-  $('said').classList.remove('ex');$('saidL').textContent='आपने कहा:';$('saidP').innerHTML='<span class="cur"></span>';
-  recStart=Date.now();recSec=0;
-  recT=setInterval(()=>{recSec=(Date.now()-recStart)/1000;$('rTt').textContent='00:'+String(Math.floor(recSec)).padStart(2,'0');if(recSec>=14)finishRec()},200);
+function fakeType(){
+  if(R.fake||R.state!=='on')return;R.fake=true;
   const tk=trTokens(),words=tk.filter(x=>x.h||x.t.trim()).length;let k=0,shown=[];
   const per=Math.max(260,Math.min(560,6200/words));
-  setTimeout(function step(){
-    if(recState!=='on')return;
-    // add next token (skip spaces quickly)
+  (function step(){
+    if(R.state!=='on')return;
     while(k<tk.length&&!tk[k].h&&!tk[k].t.trim())shown.push(tk[k++]);
-    if(k<tk.length){shown.push(tk[k++]);$('saidP').innerHTML=tokHTML(shown)+'<span class="cur"></span>';recTyp=setTimeout(step,per*(0.75+Math.random()*.5))}
-  },650);
+    if(k<tk.length){shown.push(tk[k++]);$('saidP').innerHTML=tokHTML(shown)+'<span class="cur"></span>';R.typ=setTimeout(step,per*(0.75+Math.random()*.5))}
+  })();
 }
-function stopRec(silent){clearInterval(recT);clearTimeout(recTyp);recT=null;if(!silent)wv.classList.remove('go')}
-function finishRec(){
-  if(recState!=='on')return;recState='done';stopRec();M.blip(740);vib(12);
-  const html=tokHTML(trTokens());$('saidD').innerHTML=html;
-  const secs=Math.max(5,Math.min(14,Math.round(recSec)));$('pbT').textContent='0:00 / 0:'+String(secs).padStart(2,'0');S.recSecs=secs;
-  const nm=names();
-  const ch=['👤 '+nm.disp,...S.c.ai,'🎤 आपकी आवाज़'];
-  $('chips').innerHTML=ch.map((x,i)=>`<span class="chip" style="animation-delay:${.15+i*.12}s">${esc(x)}</span>`).join('');
-  $('mini').querySelectorAll('i').forEach(i=>i.classList.remove('f'));
-  setTimeout(()=>{$('recLive').classList.add('hide');$('recDone').classList.remove('hide')},250)
+function drawWave(){
+  if(R.state!=='on'||!R.an)return;
+  const an=R.an,f=R.fd||(R.fd=new Uint8Array(an.frequencyBinCount)),td=R.td||(R.td=new Uint8Array(an.fftSize));
+  an.getByteFrequencyData(f);an.getByteTimeDomainData(td);
+  let s=0;for(let i=0;i<td.length;i++){const v=(td[i]-128)/128;s+=v*v}
+  const rms=Math.sqrt(s/td.length);R.lvl=(R.lvl||0)*.6+rms*.4;if(rms>R.peak)R.peak=rms;
+  const now=performance.now();if(!R.lt||now-R.lt>90){R.lt=now;R.levels.push(Math.min(1,Math.sqrt(rms)*1.6))}
+  const half=WB/2;
+  for(let i=0;i<WB;i++){
+    const k=Math.abs(i-half+.5)/half,bin=Math.min(f.length-1,1+Math.floor(Math.pow(k,1.5)*22)+(i%3));
+    const v=f[bin]/255*1.2*(1-k*.25)+R.lvl*2.4*(1-k*.5);
+    wbars[i].style.transform='scaleY('+Math.max(.07,Math.min(1,v)).toFixed(3)+')';
+  }
+  R.raf=requestAnimationFrame(drawWave);
 }
-$('micBtn').onclick=()=>{if(recState==='idle')startRec();else if(recState==='on')finishRec()};
+function startSTT(){
+  let r;try{r=new SR()}catch(e){R.sttDead=true;fakeType();return}
+  R.rec=r;r.lang='hi-IN';r.interimResults=true;r.continuous=!isAndroid;r.maxAlternatives=1;
+  r.onresult=e=>{let sf='',si='';for(let i=0;i<e.results.length;i++){const t=e.results[i][0].transcript;if(e.results[i].isFinal)sf+=' '+t;else si+=' '+t}
+    R.sf=sf;R.si=si;if(R.state==='on'&&!R.fake)liveText(joinT(R.fin,sf,si))};
+  r.onerror=e=>{if(['not-allowed','service-not-allowed','audio-capture','network','language-not-supported'].includes(e.error)){R.sttDead=true;if(R.state==='on'&&!joinT(R.fin,R.sf,R.si))fakeType()}};
+  r.onend=()=>{R.fin=joinT(R.fin,R.sf);R.sf='';R.si='';
+    if(R.state==='on'&&!R.sttDead&&R.rec===r){setTimeout(()=>{if(R.state==='on'&&R.rec===r){try{r.start()}catch(e){}}},120)}
+    else if(R.endWait){const f=R.endWait;R.endWait=null;f()}};
+  try{r.start()}catch(e){R.sttDead=true;fakeType()}
+}
+async function startRec(){
+  if(R.state!=='idle')return;R.state='starting';M.init();vib(15);
+  if(SET.realMic&&navigator.mediaDevices&&navigator.mediaDevices.getUserMedia&&window.MediaRecorder){
+    try{R.stream=await navigator.mediaDevices.getUserMedia({audio:{echoCancellation:true,noiseSuppression:true,autoGainControl:true}});R.real=true}
+    catch(e){R.real=false;toast('🎤 माइक की इजाज़त नहीं मिली — demo mode चलेगा',2600)}
+  }
+  if(R.state!=='starting'){if(R.stream){R.stream.getTracks().forEach(t=>t.stop());R.stream=null}return}
+  R.state='on';M.blip(990);
+  $('rT').textContent='रिकॉर्डिंग हो रही है...';$('rTm').style.visibility='visible';$('rS').classList.add('hide');
+  const m=$('micBtn');m.classList.remove('idle');m.classList.add('rec');
+  $('rH').textContent='रोकने के लिए दबाएँ';
+  $('said').classList.remove('ex');$('saidL').textContent='आपने कहा:';
+  R.start=Date.now();R.sec=0;
+  R.t=setInterval(()=>{R.sec=(Date.now()-R.start)/1000;$('rTt').textContent='00:'+String(Math.floor(R.sec)).padStart(2,'0');if(R.sec>=25)finishRec()},200);
+  if(R.real){
+    let mime='';for(const t of ['audio/webm;codecs=opus','audio/webm','audio/mp4','audio/ogg;codecs=opus'])if(MediaRecorder.isTypeSupported&&MediaRecorder.isTypeSupported(t)){mime=t;break}
+    try{R.mr=mime?new MediaRecorder(R.stream,{mimeType:mime}):new MediaRecorder(R.stream)}catch(e){R.mr=new MediaRecorder(R.stream)}
+    R.chunks=[];R.mr.ondataavailable=e=>{if(e.data&&e.data.size)R.chunks.push(e.data)};R.mr.start(250);
+    try{R.src=M.ctx.createMediaStreamSource(R.stream);R.an=M.ctx.createAnalyser();R.an.fftSize=256;R.an.smoothingTimeConstant=.55;R.src.connect(R.an);R.mute=M.ctx.createGain();R.mute.gain.value=0;R.an.connect(R.mute);R.mute.connect(M.ctx.destination);R.fd=R.td=null;wv.classList.add('live');drawWave()}
+    catch(e){wv.classList.add('go')}
+  }else wv.classList.add('go');
+  if(SET.stt&&SR){liveText('');startSTT()}else{$('saidP').innerHTML='<span class="cur"></span>';R.typ=setTimeout(fakeType,500)}
+}
+async function finishRec(){
+  if(R.state!=='on')return;R.state='stopping';
+  clearInterval(R.t);clearTimeout(R.typ);cancelAnimationFrame(R.raf);M.blip(740);vib(12);
+  $('rH').textContent='सेव हो रहा है…';
+  const waits=[];
+  if(R.mr&&R.mr.state!=='inactive')waits.push(new Promise(res=>{R.mr.onstop=res;try{R.mr.stop()}catch(e){res()}}));
+  if(R.rec&&!R.sttDead)waits.push(new Promise(res=>{R.endWait=res;try{R.rec.stop()}catch(e){res()}}));
+  await Promise.race([Promise.all(waits),new Promise(r=>setTimeout(r,1800))]);
+  if(R.state!=='stopping')return;
+  const text=R.fake?'':joinT(R.fin,R.sf,R.si).replace(/\s+/g,' ').trim();
+  if(R.rec){const r=R.rec;R.rec=null;r.onend=r.onresult=r.onerror=null;try{r.abort()}catch(e){}}
+  if(R.src){try{R.src.disconnect()}catch(e){}R.src=null}
+  if(R.mute){try{R.mute.disconnect()}catch(e){}R.mute=null}
+  if(R.stream){R.stream.getTracks().forEach(t=>t.stop());R.stream=null}
+  if(R.chunks&&R.chunks.length){R.blob=new Blob(R.chunks,{type:(R.mr&&R.mr.mimeType)||'audio/webm'});R.url=URL.createObjectURL(R.blob)}
+  if(R.real&&R.url&&R.peak<0.012)toast('⚠️ आवाज़ बहुत धीमी रिकॉर्ड हुई — ⚙️ में "बोले हुए शब्द लिखें" बंद करके देखें',4200);
+  R.state='done';R.dur=Math.max(1,R.sec);
+  $('saidD').innerHTML=text?hlName(text):tokHTML(trTokens());
+  $('pbT').textContent='0:00 / '+sec2(R.url?R.dur:Math.max(5,Math.min(14,R.dur)));
+  const nm=names(),ai=aiChips(text);
+  $('chips').innerHTML=['👤 '+nm.disp,...ai,'🎤 आपकी आवाज़'].map((x,i)=>`<span class="chip" style="animation-delay:${.15+i*.12}s">${esc(x)}</span>`).join('');
+  const bars=[...mini.children],L=R.levels||[];
+  bars.forEach((b,i)=>{b.classList.remove('f');if(L.length>3){const a=Math.floor(i*L.length/MB),z=Math.max(a+1,Math.floor((i+1)*L.length/MB));let mx=0;for(let j=a;j<z;j++)mx=Math.max(mx,L[j]||0);b.style.setProperty('--h',Math.round(14+mx*86)+'%')}});
+  wv.classList.remove('go','live');
+  setTimeout(()=>{$('recLive').classList.add('hide');$('recDone').classList.remove('hide')},200)
+}
+const KW=[[/dj|डीजे|डी जे|डी\.जे/i,'🎵 DJ वाला'],[/धमाकेदार|धमाके/,'⚡ धमाकेदार'],[/रोमांटिक|romantic/i,'🌹 रोमांटिक'],[/प्यार/,'❤️ प्यार भरा'],[/भजन|भक्ति|हनुमान|बजरंग|खाटू/,'🙏 भजन'],[/ढोल/,'🥁 ढोल वाला'],[/भोजपुरी/,'🎶 भोजपुरी'],[/हरियाणवी/,'🎶 हरियाणवी'],[/पंजाबी/,'🎶 पंजाबी'],[/राजस्थानी/,'🎶 राजस्थानी'],[/बर्थडे|जन्मदिन|birthday/i,'🎂 बर्थडे'],[/शादी/,'💍 शादी'],[/सालगिरह|एनिवर्सरी/,'💞 सालगिरह'],[/सॉरी|sorry|माफ़|माफ/i,'🥺 सॉरी वाला'],[/दोस्त|यार/,'🤝 यारी'],[/प्रचार|दुकान|बिज़नेस|बिजनेस/,'📢 प्रचार'],[/गाँव|गांव/,'🌾 गाँव'],[/पार्टी|party/i,'🕺 पार्टी'],[/सैड|दर्द|दुख/,'💔 सैड'],[/रैप|rap/i,'🎤 रैप'],[/एंट्री|entry/i,'🔥 एंट्री']];
+function aiChips(t){if(!t)return S.c.ai;const f=[];KW.forEach(([re,l])=>{if(f.length<3&&re.test(t))f.push(l)});return f.length?f:S.c.ai}
+$('micBtn').onclick=()=>{if(R.state==='idle')startRec();else if(R.state==='on')finishRec()};
 $('again').onclick=()=>{vib();resetRec()};
-let pbT=null;
 $('pbP').onclick=()=>{
-  vib();const bars=[...$('mini').querySelectorAll('i')],tot=S.recSecs||8;
-  if(pbT){clearInterval(pbT);pbT=null;$('pbI').setAttribute('d','M8 5v14l11-7z');return}
-  bars.forEach(b=>b.classList.remove('f'));$('pbI').setAttribute('d','M7 5h3.6v14H7zM13.4 5H17v14h-3.6z');const t0=Date.now();
-  pbT=setInterval(()=>{const p=Math.min(1,(Date.now()-t0)/1000/tot);bars.forEach((b,i)=>b.classList.toggle('f',i/bars.length<p));
-   $('pbT').textContent='0:'+String(Math.floor(p*tot)).padStart(2,'0')+' / 0:'+String(tot).padStart(2,'0');
-   if(p>=1){clearInterval(pbT);pbT=null;$('pbI').setAttribute('d','M8 5v14l11-7z')}},120)
+  vib();const bars=[...mini.children];
+  const setP=(p,cur,tot)=>{bars.forEach((b,i)=>b.classList.toggle('f',i/bars.length<p));$('pbT').textContent=sec2(cur)+' / '+sec2(tot)};
+  if(R.url){
+    if(!R.audio){R.audio=new Audio(R.url);R.audio.onended=()=>{cancelAnimationFrame(R.praf);$('pbI').setAttribute('d',PLAY);setP(0,0,R.dur)}}
+    const a=R.audio;
+    if(!a.paused){a.pause();cancelAnimationFrame(R.praf);$('pbI').setAttribute('d',PLAY);return}
+    M.stop();a.play().then(()=>{$('pbI').setAttribute('d',PAUSE);
+      const loop=()=>{const tot=isFinite(a.duration)&&a.duration>0?a.duration:R.dur;setP(Math.min(1,a.currentTime/tot),a.currentTime,tot);if(!a.paused)R.praf=requestAnimationFrame(loop)};loop()
+    }).catch(()=>toast('Recording नहीं चली'));
+    return
+  }
+  const tot=Math.max(5,Math.min(14,Math.round(R.dur||8)));
+  if(R.pbT){clearInterval(R.pbT);R.pbT=null;$('pbI').setAttribute('d',PLAY);return}
+  $('pbI').setAttribute('d',PAUSE);const t0=Date.now();
+  R.pbT=setInterval(()=>{const p=Math.min(1,(Date.now()-t0)/1000/tot);setP(p,p*tot,tot);if(p>=1){clearInterval(R.pbT);R.pbT=null;$('pbI').setAttribute('d',PLAY)}},120)
 };
-$('genBtn').onclick=()=>{vib(15);M.init();if(pbT){clearInterval(pbT);pbT=null}startGen()};
+$('genBtn').onclick=()=>{vib(15);M.init();stopRec();startGen()};
 
 /* ---------- generating ---------- */
 let genT=null;
